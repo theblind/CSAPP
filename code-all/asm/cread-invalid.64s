@@ -1,6 +1,0 @@
-cread:
-	movl	$0, %eax
-	testq	%rdi, %rdi
-	cmovne	(%rdi), %eax
-	retq
-
