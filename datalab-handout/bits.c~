@@ -203,7 +203,7 @@ int bitCount(int x) {
  *   Rating: 4 
  */
 int bang(int x) {
-  return 2;
+	return x == (~x + 1);
 }
 
 
@@ -273,7 +273,7 @@ int isPositive(int x) {
 	mask <<= 31;
 	int result = (mask & x) >> 31;
 	result = ~result & 1;
-	result &= !!x
+	result &= !!x;
 	return result;
 }
 
@@ -312,7 +312,13 @@ int ilog2(int x) {
  *   Rating: 2
  */
 unsigned float_neg(unsigned uf) {
- return 2;
+	int k = 0;
+	int m = uf;
+	while (m >= 2) {
+		++k;
+		m >>= 1;
+	}
+	int result;
 }
 
 

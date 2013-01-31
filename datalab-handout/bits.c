@@ -191,7 +191,33 @@ int logicalShift(int x, int n) {
  *   Rating: 4
  */
 int bitCount(int x) {
-  return 2;
+  int b1, b2, b3, b4, b5;
+
+  /* b1 = 0x55555555 */
+  b1 = 0x55 | (0x55 << 8); 
+  b1 = b1 | (b1 << 16);
+
+  /* b2 = 0x33333333 */
+  b2 = 0x33 | (0x33 << 8);
+  b2 = b2 | (b2 << 16);
+
+  /* b3 = 0x0f0f0f0f */
+  b3 = 0x0f | (0x0f << 8);
+  b3 = b3 | (b3 << 16);
+
+  /* b4 = 0x00ff00ff */
+  b4 = 0xff | (0xff << 16);
+  
+  /* b5 = 0x0000ffff */
+  b5 = 0xff | (0xff << 8);
+
+  /*divide and conquer */
+  x = (x & b1) + ((x >> 1) & b1);
+  x = (x & b2) + ((x >> 2) & b2);
+  x = (x & b3) + ((x >> 4) & b3);
+  x = (x & b4) + ((x >> 8) & b4);
+  x = (x & b5) + ((x >> 16) & b5);
+  return x;
 }
 
 
@@ -203,7 +229,8 @@ int bitCount(int x) {
  *   Rating: 4 
  */
 int bang(int x) {
-  return 2;
+	int r = (((~x + 1) | x) >> 31) + 1;
+  return r;
 }
 
 
@@ -228,8 +255,14 @@ int tmin(void) {
  *   Rating: 2
  */
 int fitsBits(int x, int n) {
-  return 2;
+  /* (x << (32 - n)) >> (32 - n) shoule be still x*/
+  int r, c;
+  c = 33 + ~n;
+  r = !(((x << c) >> c) ^ x);
+  return r;
 }
+
+
 /* 
  * divpwr2 - Compute x/(2^n), for 0 <= n <= 30
  *  Round toward zero
@@ -239,13 +272,14 @@ int fitsBits(int x, int n) {
  *   Rating: 2
  */
 int divpwr2(int x, int n) {
-	int mask = 1;
-	mask <<= 31;
-	mask >>= n;
-	mask <<= 1;
-	mask = ~mask;
-	x >>= n;
-	return x;
+	/* if x >= 0, r = x / 2^n
+   * if x < 0, r = (x + 2^n - 1) / 2^n */
+  int r, t;
+  t = (1 << n) + ~0;
+  /* after this, t is 0 if x >= 0, else t is 2^n - 1 */
+  t = t & (x >> 31);
+  r = (x + t) >> n;
+  return r;
 }
 
 
@@ -273,7 +307,7 @@ int isPositive(int x) {
 	mask <<= 31;
 	int result = (mask & x) >> 31;
 	result = ~result & 1;
-	result &= !!x
+	result &= !!x;
 	return result;
 }
 
@@ -286,8 +320,22 @@ int isPositive(int x) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  int r, sign_y, sign_x;
+
+  sign_y = (y >> 31) & 1;
+  sign_x = (x >> 31) & 1;
+
+  /* 1) sign_y = sign_x: y >= x iff the index of first '1'
+   *    in y is larger than in x (reduce to sign(x + ~y) is 1).
+   * 2) sign_y != sign_x: y >=x iff sign_y = 0 and sign_x = 1
+   * */
+  r = !(sign_y ^ sign_x) & (((x + ~y) >> 31) & 1);
+  r = r | (!sign_y & sign_x);
+
+  return r;
 }
+
+
 /*
  * ilog2 - return floor(log base 2 of x), where x > 0
  *   Example: ilog2(16) = 4
@@ -296,7 +344,46 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4
  */
 int ilog2(int x) {
-  return 2;
+  int b1, b2, b3, b4, b5;
+
+  /* pass the most significant 1 all the way down */
+  /* shamely steal from here:
+   * http://aggregate.org/MAGIC/#Most%20Significant%201%20Bit */
+  x = x | (x >> 1);
+  x = x | (x >> 2);
+  x = x | (x >> 4);
+  x = x | (x >> 8);
+  x = x | (x >> 16);
+
+  /*count the 1s now */
+
+  /* b1 = 0x55555555 */
+  b1 = 0x55 | (0x55 << 8); 
+  b1 = b1 | (b1 << 16);
+
+  /* b2 = 0x33333333 */
+  b2 = 0x33 | (0x33 << 8);
+  b2 = b2 | (b2 << 16);
+
+  /* b3 = 0x0f0f0f0f */
+  b3 = 0x0f | (0x0f << 8);
+  b3 = b3 | (b3 << 16);
+
+  /* b4 = 0x00ff00ff */
+  b4 = 0xff | (0xff << 16);
+  
+  /* b5 = 0x0000ffff */
+  b5 = 0xff | (0xff << 8);
+
+  /*divide and conquer */
+  x = (x & b1) + ((x >> 1) & b1);
+  x = (x & b2) + ((x >> 2) & b2);
+  x = (x & b3) + ((x >> 4) & b3);
+  x = (x & b4) + ((x >> 8) & b4);
+  x = (x & b5) + ((x >> 16) & b5);
+
+  x = x + ~0;
+  return x;
 }
 
 
@@ -312,14 +399,17 @@ int ilog2(int x) {
  *   Rating: 2
  */
 unsigned float_neg(unsigned uf) {
-	int k = 0;
-	int m = uf;
-	while (m >= 2) {
-		++k;
-		m >>= 1;
-	}
-	int result
+  int msbMask = 0x80000000; //& with this to isolate left most bit
+  int absUF = uf&(~msbMask); //sets msb to 0, abs float val
+
+  /*uf is not a nan if the exp are all 1 and if the frac is non 0, 
+  so we use shift to isolate exp and frac*/
+  int isNotNaN = (((absUF>>23)^0xFF)||!(absUF<<9));
+
+  //fip the msb only if uf is not a nan
+  return uf^(isNotNaN<<31);
 }
+
 
 
 /* 
@@ -332,8 +422,82 @@ unsigned float_neg(unsigned uf) {
  *   Rating: 4
  */
 unsigned float_i2f(int x) {
-  return 2;
+   /* this will store the final result to be returned */
+  unsigned res = 0;
+  unsigned count = 0;
+  unsigned exp, frac, E;
+  unsigned i = x;
+  unsigned low, high, mask, step;
+
+  if (x == 0)
+      return 0;
+
+  if (x < 0)
+  {
+      /* x maybe INT_MIN, in this case, i = 2^31 */
+      i = -x;
+      /* set the sign bit */
+      res = 0x80000000;
+  }
+
+  /* find the most siginificant bit in i */
+  while ((i & 0x80000000) == 0) 
+  {
+    ++count;
+    i = i << 1;
+  }
+
+  /* shift the MSB out */
+  i = i << 1;
+  /* after this, 32 - count is E */
+  ++count;
+  E = 32 - count;
+  exp = E + 127;
+  frac = i >> 9;
+
+  /* will the value be fit into frac part? */
+  if (E < 24)
+  {
+    return res | (exp << 23) | frac;
+  }
+  else
+  {
+    /* step is 2^E * 2^(-23), align the value to step  */
+    step = 1 << (E - 23);
+    mask = ~(step - 1);
+    /* shfit i back */
+    i = i >> count;
+    low = i & mask;
+    high = low + step;
+
+    /* printf("i = 0x%x, low = 0x%x, high = 0x%x\n", i, low, high); */
+
+    if (high - i > i - low)
+        frac = low;
+    else if (high - i < i - low)
+        frac = high;
+    else
+    {
+        /* the value is in the middle, round to even */
+        /* see if low % (2*step) is 0 */
+        if ((low & ((step << 1) - 1)) == 0)
+            frac = low;
+        else
+            frac = high;
+    }
+
+    /* if frac part of low are all 1s and need to round to high */
+    if ((((low >> (E - 23)) & 0x7fffff) == 0x7fffff) && (frac == high))
+        exp++;
+
+    /*printf("step = 0x%x, mask = 0x%x, high = 0x%x\n", step, mask);*/
+
+    frac = (frac >> (E - 23)) & 0x7fffff;
+    return res | (exp << 23) | frac;
+  }
 }
+
+
 /* 
  * float_twice - Return bit-level equivalent of expression 2*f for
  *   floating point argument f.
@@ -346,5 +510,15 @@ unsigned float_i2f(int x) {
  *   Rating: 4
  */
 unsigned float_twice(unsigned uf) {
-  return 2;
+  unsigned e = uf & 0x7F800000;
+  unsigned m = uf & 0x007FFFFF;
+
+  if (uf == 0x7F800000) 
+    return uf;
+  else if (!e)
+      return (uf & (~0x007FFFFF)) + m + m;
+  else if (e ^ 0x7F800000)
+      return (e + 0x00800000) + (uf & ~(0x7F800000));
+  else
+    return uf;
 }
